@@ -41,16 +41,39 @@ int in_cache(struct cache * our_cache, char * address){
     return 0;
 };
 
+//is something like this necessary?
+//the idea is that we keep track of the order that the sets came in with an int priority in the set struct
+//the next set to get kicked out is one with a priority number equal to the number of sets
+//each priority number gets updated in the function, so anytime we modify the cache, we call this
+struct cache* update_priority(struct cache * our_cache, struct set* our_set){
+    int old_priority = our_set->priority;
+    for(int i = 0; i < sizeof(our_cache->our_sets)/sizeof(our_cache->our_sets[0]); i++){
+        if(our_cache->our_sets[i].address == our_set->address){
+            our_cache->our_sets[i].priority = 0;
+        }
+        else if(our_cache->our_sets[i].priority < old_priority){
+            our_cache->our_sets[i].priority++;
+        }
+    }
+
+    return our_cache;
+}
+
 struct cache * helper_func(char * operation, char * address, int size, struct cache * our_cache){
     int opt = (*operation);
     int add = 0;
+
+    //adjust hits an misses for our cache in this switch statement
     switch(opt){
         case 'I':
             break;
         case 'S':
+            //if a miss, we need to add the new block to the cache
             add = in_cache(our_cache, address);
             our_cache->hits += add;
             our_cache->misses += 1 - add;
+
+            //if a hit, we need to update the priority numbers
             break;
         case 'L':
             add = in_cache(our_cache, address);
@@ -64,10 +87,6 @@ struct cache * helper_func(char * operation, char * address, int size, struct ca
             break;
         default:
             abort();
-    }
-
-    if(add == 0){
-
     }
 
     return our_cache;
