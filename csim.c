@@ -14,8 +14,12 @@ Riley Mangan, Harris McCullers, and Kevin Sasaki
 
 #define cache_size 10
 
-//If l is the length of the address (in bits), then the number of tag bits is t = l − b − s
-//t = 64 - b - s
+/* Notes:
+
+I think we will use write-back + write-allocate from the 3rd cache lecture?
+
+If l is the length of the address (in bits), then the number of tag bits is t = l − b − s
+*/
 struct set{
     char * address, value, tag, block;
     int index, priority;
@@ -70,12 +74,12 @@ struct cache * place_in_cache(struct cache * our_cache, char * address){
     return our_cache;
 }
 
-//returns 1 if the parameter address is in the our_cache
+//returns 1 if the address is in the our_cache
+//returns 0 if the address is not in our cache
 int in_cache(struct cache * our_cache, char * address){
     int i;
     for(i = 0; i < cache_size; i++){
         char * comparison_address = our_cache->our_sets[i].address;
-
         if(comparison_address == address){
             printf("hello\n");
             return 1;
@@ -92,28 +96,28 @@ struct cache * helper_func(char * operation, char * address, int size, struct ca
         case 'I':
             break;
         case 'S':
-            //if a miss, we need to add the new block to the cache
+            //TODO a miss, needs to use write-allocate and needs to implement a dirty bit
+            //I think it's supposed to record a miss or hit, and then either way, we need
+            //to label a dirty bit so that it gets copied to main memory when it gets evicted
+            //
             add = in_cache(our_cache, address);
-            printf("add: %d\n", add);
             our_cache->hits = our_cache->hits + add;
             our_cache->misses = our_cache->misses + 1 - add;
-
-            //if a hit, we need to update the priority numbers
             break;
         case 'L':
+            //
             add = in_cache(our_cache, address);
             our_cache = place_in_cache(our_cache, address);
-            printf("add: %d\n", add);
             our_cache->hits = our_cache->hits + add;
             our_cache->misses = our_cache->misses + 1 - add;
-            printf("our_cache->misses: %d\n", our_cache->misses);
+            our_cache->evictions = our_cache->evictions + 1 - add;
             break;
         case 'M':
             add = in_cache(our_cache, address);
-            printf("add: %d\n", add);
-            our_cache->hits += 1;
-            our_cache->hits += add;
-            our_cache->misses += 1 - add;
+            our_cache = place_in_cache(our_cache, address);
+            our_cache->hits = our_cache->hits + add;
+            our_cache->misses = our_cache->misses + 1 - add;
+            our_cache->evictions = our_cache->evictions + 1 - add;
             break;
         default:
             abort();
