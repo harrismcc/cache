@@ -12,7 +12,7 @@ Riley Mangan, Harris McCullers, and Kevin Sasaki
 #include <stdlib.h>
 #include <unistd.h>
 
-#define cache_size 10
+#define cache_size 4
 
 /* Notes:
 
@@ -27,6 +27,8 @@ struct set{
 
 
 //TODO make a constructor to make cache_size equal to whatever our input was from the command line
+// ^not sure what this means. What is the "cache_size"? number of sets, number of rows, number of bytes, number of blocks?
+
 struct cache{
     int hits, misses, evictions;
     struct set * our_sets;
@@ -42,6 +44,7 @@ struct cache * cache_new(int x) {
     c->our_sets = s;
     return c;
 }
+
 
 /* delete struct */
 void cache_delete(struct cache * c) {
@@ -80,8 +83,9 @@ int in_cache(struct cache * our_cache, char * address){
     int i;
     for(i = 0; i < cache_size; i++){
         char * comparison_address = our_cache->our_sets[i].address;
+        
         if(comparison_address == address){
-            printf("hello\n");
+            
             return 1;
         }
     }
@@ -91,6 +95,13 @@ int in_cache(struct cache * our_cache, char * address){
 struct cache * helper_func(char * operation, char * address, int size, struct cache * our_cache){
     int opt = *operation;
     int add = 0;
+    char letter;
+    char* hit_or_miss;
+
+    //TODO: remove this when hit & miss are working properly
+    hit_or_miss = ""; //default value
+    printf("%s\n", hit_or_miss);
+
     //adjust hits an misses for our cache in this switch statement
     switch(opt){
         case 'I':
@@ -100,19 +111,33 @@ struct cache * helper_func(char * operation, char * address, int size, struct ca
             //I think it's supposed to record a miss or hit, and then either way, we need
             //to label a dirty bit so that it gets copied to main memory when it gets evicted
             //
+            letter = 'S';
             add = in_cache(our_cache, address);
+            our_cache = place_in_cache(our_cache, address);//$
             our_cache->hits = our_cache->hits + add;
             our_cache->misses = our_cache->misses + 1 - add;
+            our_cache->evictions = our_cache->evictions + 1 - add; //$
             break;
         case 'L':
             //
+            letter = 'L';
             add = in_cache(our_cache, address);
+
+            //testing printing stuff, ignore
+            if(add == 1){
+                hit_or_miss = "hit";
+            }
+            else{
+                hit_or_miss = "miss";
+            }
+
             our_cache = place_in_cache(our_cache, address);
             our_cache->hits = our_cache->hits + add;
             our_cache->misses = our_cache->misses + 1 - add;
             our_cache->evictions = our_cache->evictions + 1 - add;
             break;
         case 'M':
+            letter = 'M';
             add = in_cache(our_cache, address);
             our_cache = place_in_cache(our_cache, address);
             our_cache->hits = our_cache->hits + add;
@@ -123,13 +148,31 @@ struct cache * helper_func(char * operation, char * address, int size, struct ca
             abort();
     }
 
+    //print out in specified format
+    //TODO: This does not quite work how it is supposed to in the lab docs
+    printf("%c %s %s\n", letter, address, hit_or_miss);
+
+
     return our_cache;
 };
+
+int str_cut(char *str, int begin, int len)
+{
+    int l = strlen(str);
+
+    if (len < 0) len = l - begin;
+    if (begin + len > l) len = l - begin;
+    memmove(str + begin, str + begin + len, l - len + 1);
+
+    return len;
+}
 
 int main(int argc, char **argv)
 {
     //parse the input string
     int opt, hflag, vflag, s, E, b;
+    vflag = 0;
+    hflag = 0;
     char* t;
     while( (opt = getopt(argc, argv, "h::v::s:E:b:t:")) != -1){
         switch(opt){
@@ -165,13 +208,29 @@ int main(int argc, char **argv)
     FILE *file = fopen(t, "r");
     char operation[2], address[8];
     int size;
-    while(fscanf(file, " %s %s, %d", operation, address, &size) != -1){
+
+
+
+    //NOTE: Fixed this fscanf so now the address is correct, before it looked like (ex.) 210,1 instead of just 210
+    //Don't change this formatting string, it was hard to get right and is picky
+    while(fscanf(file, "%s %[^,], %d", operation, address, &size) == 3){
+
         our_cache = helper_func(&operation[0], &address[0], size, our_cache);
-        printf("operation, address, size: %s %s %d\n", operation, address, size);
+        if(vflag == 1){
+            printf("operation, address, size: %s %s %d\n", operation, address, size);
+        }
     }
     
+    
+    if(hflag == 1){
+        //TODO: fill in help message for hflag
+        printf("%s\n", "Print help message Here");
+    }
 
-    printf("s, E, b, t: %d %d %d %s\n",s,E,b,t);
+    if(vflag == 1){
+        printf("s, E, b, t: %d %d %d %s\n",s,E,b,t);
+    }
+    
 
     printSummary(our_cache->hits, our_cache->misses, our_cache->evictions);
 
